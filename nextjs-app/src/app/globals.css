@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  direction: rtl;
+  background:
+    radial-gradient(1200px 500px at 100% -10%, #e2f5ea, transparent),
+    radial-gradient(900px 400px at -10% 110%, rgba(47,111,176,0.08), transparent),
+    #f6faf8;
+  color: #173226;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-nastaliq), serif;
+  font-weight: 700;
+  line-height: 1.9;
+}
+
+.num {
+  font-family: var(--font-inter), sans-serif;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.card {
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(23,50,38,0.10);
+  border-radius: 18px;
+  box-shadow: 0 4px 14px -6px rgba(23,50,38,0.14);
+}
+
+.btn {
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 12px 18px;
+  min-height: 46px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(135deg, #3fa373, #256e4d);
+  color: #fff;
+  box-shadow: 0 4px 14px -6px rgba(23,50,38,0.3);
+}
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-ghost {
+  background: #f2faf6;
+  border: 1px solid rgba(23,50,38,0.10);
+  color: #173226;
+}
+.btn-ghost:hover { background: #e2f5ea; }
+.btn-danger { background: #fdecea; color: #c0392b; }
+
+.field-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(23,50,38,0.10);
+  background: #f2faf6;
+  outline: none;
+}
+.field-input:focus {
+  border-color: #3fa373;
+  box-shadow: 0 0 0 3px rgba(63,163,115,0.18);
+}
+
+.badge { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+.badge-paid { background: #e6f6ec; color: #2f8a60; }
+.badge-due { background: #fdecea; color: #c0392b; }
+.badge-empty { background: rgba(150,150,150,0.14); color: #4d6b5c; }
+.badge-rented { background: rgba(47,111,176,0.14); color: #25588c; }
+
+/* Perforated ledger-style divider (matches the market/ledger identity) */
+.perf {
+  height: 0; border-top: 2px dashed rgba(23,50,38,0.15); position: relative; margin: 16px 0;
+}
