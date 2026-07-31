@@ -37,6 +37,18 @@ export default function LedgerPage() {
   const totalDue = Math.max(totalRent - totalPaid, 0);
   const years = [...new Set(history.map((p) => p.year))].sort((a, b) => b - a);
 
+  function downloadCSV() {
+    let csv = "مہینہ,سال,کل کرایہ,وصول شدہ,بقایا,تاریخ,طریقہ\n";
+    history.forEach((p) => {
+      csv += `${MONTHS_UR[p.month - 1]},${p.year},${p.total_rent},${p.paid_amount},${Math.max(p.total_rent - p.paid_amount, 0)},${p.payment_date || "—"},${p.method}\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `ledger_${selectedShop.number}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function downloadDocument() {
     let docRows = history, periodLabel = "مکمل کھاتہ";
     if (period === "month") {
@@ -161,7 +173,8 @@ th{background:#eef9f3;}
                   {years.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               )}
-              <button className="btn btn-primary" onClick={downloadDocument}>⬇️ دستاویز ڈاؤن لوڈ کریں</button>
+              <button className="btn btn-primary" onClick={downloadDocument}>⬇️ دستاویز (PDF) ڈاؤن لوڈ کریں</button>
+              <button className="btn btn-ghost ml-2" onClick={downloadCSV}>⬇️ Excel (CSV) ڈاؤن لوڈ کریں</button>
               <p className="text-[12px] text-inksoft mt-2">فائل کھلنے کے بعد براؤزر میں Print کریں اور 'Save as PDF' منتخب کریں۔</p>
             </>
           )}

@@ -26,16 +26,19 @@ export async function POST(req) {
   const existing = await db.collection("payments").findOne({ shop_id: String(shop_id), month, year });
   const totalRent = existing ? existing.total_rent : shop.monthly_rent;
 
+  let paymentId;
   if (existing) {
     await db.collection("payments").updateOne(
       { _id: existing._id },
       { $set: { paid_amount: Number(paid_amount), method, payment_date } }
     );
+    paymentId = existing._id;
   } else {
-    await db.collection("payments").insertOne({
+    const insertRes = await db.collection("payments").insertOne({
       shop_id: String(shop_id), month, year,
       total_rent: totalRent, paid_amount: Number(paid_amount), method, payment_date,
     });
+    paymentId = insertRes.insertedId;
   }
 
   const settings = await getSettings();
@@ -57,5 +60,9 @@ export async function POST(req) {
     whatsappResult = await sendWhatsApp(shop.mobile, msg);
   }
 
-  return NextResponse.json({ ok: true, due, whatsapp: whatsappResult });
+  return NextResponse.json({
+    ok: true, due, whatsapp: whatsappResult,
+    paymentId: String(paymentId), totalRent,
+    marketName: settings.market_name, collectorName: settings.collector_name,
+  });
 }

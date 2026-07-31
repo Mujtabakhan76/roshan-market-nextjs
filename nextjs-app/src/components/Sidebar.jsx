@@ -7,6 +7,7 @@ const NAV = [
   { href: "/dashboard", label: "🏠 ڈیش بورڈ" },
   { href: "/shops", label: "🏬 دکانیں" },
   { href: "/rent", label: "💰 کرایہ وصولی" },
+  { href: "/backdated", label: "🗂️ پرانے کرائے" },
   { href: "/ledger", label: "📒 دکان دار کھاتہ" },
   { href: "/expenses", label: "🧾 اخراجات" },
   { href: "/reports", label: "📊 رپورٹس" },

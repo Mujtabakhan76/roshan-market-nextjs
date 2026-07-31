@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import StatCard from "@/components/StatCard";
 import { BarChartCard, DoughnutCard, CHART_COLORS } from "@/components/Charts";
-import { MONTHS_UR, fmt, monthSummary, yearSummary, buildPaymentIndex } from "@/lib/utils";
+import { MONTHS_UR, fmt, monthSummary, yearSummary, buildPaymentIndex, filterValidPayments } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [shops, setShops] = useState([]);
@@ -26,7 +26,8 @@ export default function DashboardPage() {
 
   if (loading) return <div className="text-inksoft">لوڈ ہو رہا ہے...</div>;
 
-  const payIdx = buildPaymentIndex(payments);
+  const validPayments = filterValidPayments(payments, shops);
+  const payIdx = buildPaymentIndex(validPayments);
   const today = new Date();
   const cm = today.getMonth() + 1, cy = today.getFullYear();
   const totalShops = shops.length;
@@ -35,7 +36,7 @@ export default function DashboardPage() {
   const ms = monthSummary(cm, cy, shops, payIdx);
   const ys = yearSummary(cy, shops, payIdx);
   const totalExpenses = expenses.reduce((a, e) => a + e.amount, 0);
-  const totalCollectedAllTime = payments.reduce((a, p) => a + p.paid_amount, 0);
+  const totalCollectedAllTime = validPayments.reduce((a, p) => a + p.paid_amount, 0);
   const net = totalCollectedAllTime - totalExpenses;
 
   const monthlyData = [];

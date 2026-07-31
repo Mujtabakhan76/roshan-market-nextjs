@@ -39,3 +39,11 @@ export function buildPaymentIndex(payments) {
   }
   return map;
 }
+
+// صرف وہ payment records رکھیں جن کی دکان اب بھی موجود ہے — حذف شدہ دکانوں کے
+// پرانے (orphan) ریکارڈز کبھی بھی ٹوٹل میں شامل نہ ہوں، چاہے وہ database میں
+// کسی وجہ سے رہ گئے ہوں۔
+export function filterValidPayments(payments, shops) {
+  const validIds = new Set(shops.map((s) => String(s._id)));
+  return payments.filter((p) => validIds.has(String(p.shop_id)));
+}

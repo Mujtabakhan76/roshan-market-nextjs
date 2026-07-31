@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { MONTHS_UR, fmt, todayISO } from "@/lib/utils";
+import ReceiptModal from "@/components/ReceiptModal";
 
 export default function RentPage() {
   const today = new Date();
@@ -14,6 +15,7 @@ export default function RentPage() {
   const [form, setForm] = useState({ paid_amount: 0, method: "نقد", payment_date: todayISO() });
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [receipt, setReceipt] = useState(null);
 
   function load() {
     Promise.all([
@@ -63,6 +65,17 @@ export default function RentPage() {
     } else {
       setNotice({ type: "success", text: "ادائیگی محفوظ کر لی گئی۔" });
     }
+    setReceipt({
+      shop,
+      month, year,
+      paidAmount: Number(form.paid_amount),
+      due: data.due,
+      paymentDate: form.payment_date,
+      method: form.method,
+      marketName: data.marketName,
+      collectorName: data.collectorName,
+      receiptNo: (data.paymentId || "").slice(-6).toUpperCase() || "—",
+    });
     load();
   }
 
@@ -137,6 +150,7 @@ export default function RentPage() {
           );
         })}
       </div>
+      <ReceiptModal data={receipt} onClose={() => setReceipt(null)} />
     </div>
   );
 }

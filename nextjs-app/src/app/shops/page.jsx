@@ -117,10 +117,19 @@ export default function ShopsPage() {
 
             {editingId === s._id ? (
               <div className="mt-3 space-y-2">
+                <label className="text-xs text-inksoft block">دکان نمبر</label>
+                <input className="field-input" defaultValue={s.number} onChange={(e) => setEditForm({ ...editForm, number: e.target.value })} />
+                <label className="text-xs text-inksoft block">دکان کا نام</label>
                 <input className="field-input" defaultValue={s.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                <label className="text-xs text-inksoft block">دکان دار کا نام</label>
                 <input className="field-input" defaultValue={s.tenant_name} onChange={(e) => setEditForm({ ...editForm, tenant_name: e.target.value })} />
+                <label className="text-xs text-inksoft block">موبائل نمبر</label>
                 <input className="field-input" defaultValue={s.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} />
+                <label className="text-xs text-inksoft block">شناختی کارڈ نمبر</label>
+                <input className="field-input" defaultValue={s.cnic || ""} onChange={(e) => setEditForm({ ...editForm, cnic: e.target.value })} />
+                <label className="text-xs text-inksoft block">ماہانہ کرایہ</label>
                 <input className="field-input" type="number" defaultValue={s.monthly_rent} onChange={(e) => setEditForm({ ...editForm, monthly_rent: e.target.value })} />
+                <label className="text-xs text-inksoft block">دکان کی حالت</label>
                 <select className="field-input" defaultValue={s.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
                   <option value="rented">کرایہ پر</option>
                   <option value="empty">خالی</option>
@@ -132,7 +141,7 @@ export default function ShopsPage() {
               </div>
             ) : (
               <div className="flex gap-2 mt-3">
-                <button className="btn btn-ghost flex-1" onClick={() => { setEditingId(s._id); setEditForm({ name: s.name, tenant_name: s.tenant_name, mobile: s.mobile, monthly_rent: s.monthly_rent, status: s.status }); }}>✏️ ترمیم</button>
+                <button className="btn btn-ghost flex-1" onClick={() => { setEditingId(s._id); setEditForm({ number: s.number, name: s.name, tenant_name: s.tenant_name, mobile: s.mobile, cnic: s.cnic || "", monthly_rent: s.monthly_rent, status: s.status }); }}>✏️ ترمیم</button>
                 <button className="btn btn-danger flex-1" onClick={() => handleDelete(s)}>🗑️ حذف</button>
               </div>
             )}

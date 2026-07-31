@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fmt, monthSummary, yearSummary, buildPaymentIndex } from "@/lib/utils";
+import { fmt, monthSummary, yearSummary, buildPaymentIndex, filterValidPayments } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [shops, setShops] = useState([]);
@@ -17,7 +17,7 @@ export default function ReportsPage() {
 
   if (loading) return <div className="text-inksoft">لوڈ ہو رہا ہے...</div>;
 
-  const payIdx = buildPaymentIndex(payments);
+  const payIdx = buildPaymentIndex(filterValidPayments(payments, shops));
   const today = new Date();
   const cm = today.getMonth() + 1, cy = today.getFullYear();
   const summary = filter === "month" ? monthSummary(cm, cy, shops, payIdx) : yearSummary(cy, shops, payIdx);
