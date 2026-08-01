@@ -37,6 +37,17 @@ export default function LedgerPage() {
   const totalDue = Math.max(totalRent - totalPaid, 0);
   const years = [...new Set(history.map((p) => p.year))].sort((a, b) => b - a);
 
+  const today = new Date();
+  const cm = today.getMonth() + 1, cy = today.getFullYear();
+  const thisYearHistory = history.filter((p) => p.year === cy);
+  const thisYearTotal = thisYearHistory.reduce((a, p) => a + p.total_rent, 0);
+  const thisYearPaid = thisYearHistory.reduce((a, p) => a + p.paid_amount, 0);
+  const currentMonthRecord = history.find((p) => p.month === cm && p.year === cy);
+  const currentMonthDue = currentMonthRecord
+    ? Math.max(currentMonthRecord.total_rent - currentMonthRecord.paid_amount, 0)
+    : (selectedShop ? selectedShop.monthly_rent : 0);
+  const currentMonthPaid = currentMonthRecord ? currentMonthRecord.paid_amount : 0;
+
   function downloadCSV() {
     let csv = "مہینہ,سال,کل کرایہ,وصول شدہ,بقایا,تاریخ,طریقہ\n";
     history.forEach((p) => {
@@ -119,13 +130,23 @@ th{background:#eef9f3;}
 
       {selectedShop && (
         <div className="card p-5">
-          <h3 className="text-base mb-4">📒 دکان نمبر <span className="num">{selectedShop.number}</span> — {selectedShop.tenant_name} کا کھاتہ</h3>
+          <h3 className="text-base mb-1">📒 دکان نمبر <span className="num">{selectedShop.number}</span> — {selectedShop.name}</h3>
+          <p className="text-inksoft text-sm mb-4">دکان دار: <b>{selectedShop.tenant_name}</b></p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             <div className="card p-3"><div className="text-xs text-inksoft">ماہانہ کرایہ</div><div className="num font-bold">Rs {fmt(selectedShop.monthly_rent)}</div></div>
-            <div className="card p-3"><div className="text-xs text-inksoft">کل بننے والا کرایہ</div><div className="num font-bold">Rs {fmt(totalRent)}</div></div>
-            <div className="card p-3"><div className="text-xs text-inksoft">کل وصول شدہ</div><div className="num font-bold">Rs {fmt(totalPaid)}</div></div>
-            <div className="card p-3"><div className="text-xs text-inksoft">کل بقایا</div><div className="num font-bold">Rs {fmt(totalDue)}</div></div>
+            <div className="card p-3"><div className="text-xs text-inksoft">اس سال کا کل کرایہ</div><div className="num font-bold">Rs {fmt(thisYearTotal)}</div></div>
+            <div className="card p-3"><div className="text-xs text-inksoft">اس سال وصول شدہ</div><div className="num font-bold">Rs {fmt(thisYearPaid)}</div></div>
+            <div className="card p-3">
+              <div className="text-xs text-inksoft">موجودہ مہینے کی حیثیت</div>
+              <div className="num font-bold">
+                {currentMonthDue <= 0 && currentMonthRecord ? <span className="badge badge-paid">✔ ادا شدہ</span> : <span className="badge badge-due">بقایا Rs {fmt(currentMonthDue)}</span>}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-5">
+            <div className="card p-3"><div className="text-xs text-inksoft">کل وصول شدہ رقم (ہمیشہ سے)</div><div className="num font-bold text-green-600">Rs {fmt(totalPaid)}</div></div>
+            <div className="card p-3"><div className="text-xs text-inksoft">کل بقایا رقم (ہمیشہ سے)</div><div className="num font-bold text-red2">Rs {fmt(totalDue)}</div></div>
           </div>
 
           <div className="overflow-x-auto mb-6">

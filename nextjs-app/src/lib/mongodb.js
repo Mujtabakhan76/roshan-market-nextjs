@@ -24,12 +24,21 @@ if (process.env.NODE_ENV === "development") {
 export async function getDb() {
   const c = await clientPromise;
   const db = c.db("market_rent_db");
-  // Indexes — safe to call every time, no-op if already present
-  await db.collection("payments").createIndex(
-    { shop_id: 1, month: 1, year: 1 },
-    { unique: true }
-  );
-  await db.collection("shops").createIndex({ status: 1 });
-  await db.collection("expenses").createIndex({ date: 1 });
+  // Indexes performance behtar karte hain, lekin agar (کسی پرانی duplicate
+  // entry کی وجہ سے) index بننے میں مسئلہ ہو تو پوری API fail نہیں ہونی
+  // چاہیے — اسی وجہ سے ہر index الگ سے، غیر-fatal طریقے سے بنایا جاتا ہے۔
+  await safeCreateIndex(db, "payments", { shop_id: 1, month: 1, year: 1 }, { unique: true });
+  await safeCreateIndex(db, "shops", { status: 1 });
+  await safeCreateIndex(db, "expenses", { date: 1 });
   return db;
+}
+
+async function safeCreateIndex(db, collection, spec, options = {}) {
+  try {
+    await db.collection(collection).createIndex(spec, options);
+  } catch (e) {
+    // Index conflict (مثلاً پرانی duplicate entries) کبھی بھی پوری ایپ کو
+    // نہیں روکنی چاہیے — صرف لاگ کریں اور آگے بڑھیں۔
+    console.error(`Index warning on "${collection}":`, e.message);
+  }
 }

@@ -15,25 +15,35 @@ async function seedDemoIfEmpty(db) {
 
 export async function GET() {
   if (!isLoggedIn()) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const db = await getDb();
-  await seedDemoIfEmpty(db);
-  const shops = await db.collection("shops").find({}).sort({ number: 1 }).toArray();
-  return NextResponse.json(shops);
+  try {
+    const db = await getDb();
+    await seedDemoIfEmpty(db);
+    const shops = await db.collection("shops").find({}).sort({ number: 1 }).toArray();
+    return NextResponse.json(shops);
+  } catch (e) {
+    console.error("GET /api/shops failed:", e);
+    return NextResponse.json({ error: "دکانوں کی معلومات حاصل کرنے میں خرابی" }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
   if (!isLoggedIn()) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const body = await req.json();
-  const { number, name, tenant_name, mobile, cnic, monthly_rent, status } = body;
+  try {
+    const body = await req.json();
+    const { number, name, tenant_name, mobile, cnic, monthly_rent, status } = body;
 
-  if (!number || !tenant_name || !mobile || !monthly_rent || monthly_rent <= 0) {
-    return NextResponse.json({ error: "لازمی خانے پُر کریں" }, { status: 400 });
+    if (!number || !tenant_name || !mobile || !monthly_rent || monthly_rent <= 0) {
+      return NextResponse.json({ error: "لازمی خانے پُر کریں" }, { status: 400 });
+    }
+
+    const db = await getDb();
+    const result = await db.collection("shops").insertOne({
+      number, name: name || "—", tenant_name, mobile,
+      cnic: cnic || "", monthly_rent: Number(monthly_rent), status: status || "rented",
+    });
+    return NextResponse.json({ ok: true, id: result.insertedId });
+  } catch (e) {
+    console.error("POST /api/shops failed:", e);
+    return NextResponse.json({ error: "دکان محفوظ کرنے میں خرابی" }, { status: 500 });
   }
-
-  const db = await getDb();
-  const result = await db.collection("shops").insertOne({
-    number, name: name || "—", tenant_name, mobile,
-    cnic: cnic || "", monthly_rent: Number(monthly_rent), status: status || "rented",
-  });
-  return NextResponse.json({ ok: true, id: result.insertedId });
 }

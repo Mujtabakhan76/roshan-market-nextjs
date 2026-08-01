@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fmt } from "@/lib/utils";
+import WhatsAppModal from "@/components/WhatsAppModal";
 
 const EMPTY_FORM = { number: "", name: "", tenant_name: "", mobile: "", cnic: "", monthly_rent: "", status: "rented" };
 
 export default function ShopsPage() {
   const [shops, setShops] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [settings, setSettings] = useState({ market_name: "روشن مارکیٹ", collector_name: "" });
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -14,11 +17,24 @@ export default function ShopsPage() {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [whatsappShop, setWhatsappShop] = useState(null);
 
   function load() {
-    fetch("/api/shops").then((r) => r.json()).then((d) => { setShops(d); setLoading(false); });
+    Promise.all([
+      fetch("/api/shops").then((r) => r.json()),
+      fetch("/api/payments").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()),
+    ]).then(([s, p, st]) => { setShops(s); setPayments(p); setSettings(st); setLoading(false); });
   }
   useEffect(load, []);
+
+  function reminderMessage(shop) {
+    const today = new Date();
+    const cm = today.getMonth() + 1, cy = today.getFullYear();
+    const p = payments.find((x) => String(x.shop_id) === String(shop._id) && x.month === cm && x.year === cy);
+    const due = p ? Math.max(p.total_rent - p.paid_amount, 0) : shop.monthly_rent;
+    return `السلام علیکم ${shop.tenant_name} صاحب\n\nآپ کی دکان نمبر ${shop.number} کا اس ماہ کا کرایہ بقایا ہے۔\nبقایا رقم: Rs ${fmt(due)}\n\nبراہِ کرم جلد از جلد ادائیگی کریں۔\nشکریہ\n${settings.market_name}`;
+  }
 
   async function handleAdd() {
     setError("");
@@ -140,14 +156,20 @@ export default function ShopsPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2 mt-3">
-                <button className="btn btn-ghost flex-1" onClick={() => { setEditingId(s._id); setEditForm({ number: s.number, name: s.name, tenant_name: s.tenant_name, mobile: s.mobile, cnic: s.cnic || "", monthly_rent: s.monthly_rent, status: s.status }); }}>✏️ ترمیم</button>
-                <button className="btn btn-danger flex-1" onClick={() => handleDelete(s)}>🗑️ حذف</button>
+              <div className="flex flex-col gap-2 mt-3">
+                <button className="btn btn-ghost" onClick={() => setWhatsappShop(s)}>📱 WhatsApp پیغام بھیجیں</button>
+                <div className="flex gap-2">
+                  <button className="btn btn-ghost flex-1" onClick={() => { setEditingId(s._id); setEditForm({ number: s.number, name: s.name, tenant_name: s.tenant_name, mobile: s.mobile, cnic: s.cnic || "", monthly_rent: s.monthly_rent, status: s.status }); }}>✏️ ترمیم</button>
+                  <button className="btn btn-danger flex-1" onClick={() => handleDelete(s)}>🗑️ حذف</button>
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
+      {whatsappShop && (
+        <WhatsAppModal shop={whatsappShop} defaultMessage={reminderMessage(whatsappShop)} onClose={() => setWhatsappShop(null)} />
+      )}
     </div>
   );
 }

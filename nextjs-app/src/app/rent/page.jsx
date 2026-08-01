@@ -16,14 +16,22 @@ export default function RentPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [deleting, setDeleting] = useState(null);
 
-  function load() {
-    Promise.all([
-      fetch("/api/shops").then((r) => r.json()),
-      fetch("/api/payments").then((r) => r.json()),
-    ]).then(([s, p]) => { setShops(s); setPayments(p); setLoading(false); });
+  async function load() {
+    try {
+      const [rs, rp] = await Promise.all([fetch("/api/shops"), fetch("/api/payments")]);
+      if (!rs.ok || !rp.ok) throw new Error("load_failed");
+      const [s, p] = await Promise.all([rs.json(), rp.json()]);
+      setShops(s); setPayments(p); setErrorMsg("");
+    } catch (e) {
+      setErrorMsg("⚠️ ڈیٹا لوڈ کرنے میں خرابی ہوئی — براہِ کرم صفحہ ریفریش کریں۔");
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   if (loading) return <div className="text-inksoft">لوڈ ہو رہا ہے...</div>;
 
@@ -45,38 +53,63 @@ export default function RentPage() {
 
   async function handleSave(shop) {
     setSaving(true);
-    const res = await fetch("/api/payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shop_id: shop._id, month, year,
-        paid_amount: Number(form.paid_amount), method: form.method, payment_date: form.payment_date,
-      }),
-    });
-    const data = await res.json();
-    setSaving(false);
-    setOpenRowId(null);
-    if (data.whatsapp?.ok) {
-      setNotice({ type: "success", text: `✅ WhatsApp پیغام بھیج دیا گیا — ${shop.mobile || "—"}` });
-    } else if (data.whatsapp?.reason === "whatsapp_not_configured") {
-      setNotice({ type: "info", text: "ℹ️ WhatsApp API ابھی کنیکٹ نہیں ہوئی — .env.local میں تفصیلات شامل کریں۔" });
-    } else if (data.whatsapp?.reason !== "sms_disabled") {
-      setNotice({ type: "warn", text: `⚠️ WhatsApp پیغام نہیں جا سکا (${data.whatsapp?.reason})۔` });
-    } else {
-      setNotice({ type: "success", text: "ادائیگی محفوظ کر لی گئی۔" });
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shop_id: shop._id, month, year,
+          paid_amount: Number(form.paid_amount), method: form.method, payment_date: form.payment_date,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setNotice({ type: "warn", text: `⚠️ ${d.error || "ادائیگی محفوظ نہیں ہو سکی، دوبارہ کوشش کریں۔"}` });
+        setSaving(false);
+        return;
+      }
+      const data = await res.json();
+      setOpenRowId(null);
+      if (data.whatsapp?.ok) {
+        setNotice({ type: "success", text: `✅ WhatsApp پیغام بھیج دیا گیا — ${shop.mobile || "—"}` });
+      } else if (data.whatsapp?.reason === "whatsapp_not_configured") {
+        setNotice({ type: "info", text: "ℹ️ WhatsApp API ابھی کنیکٹ نہیں ہوئی — .env.local میں تفصیلات شامل کریں۔" });
+      } else if (data.whatsapp?.reason !== "sms_disabled") {
+        setNotice({ type: "warn", text: `⚠️ WhatsApp پیغام نہیں جا سکا (${data.whatsapp?.reason})۔` });
+      } else {
+        setNotice({ type: "success", text: "ادائیگی محفوظ کر لی گئی۔" });
+      }
+      setReceipt({
+        shop,
+        month, year,
+        paidAmount: Number(form.paid_amount),
+        due: data.due,
+        paymentDate: form.payment_date,
+        method: form.method,
+        marketName: data.marketName,
+        collectorName: data.collectorName,
+        receiptNo: (data.paymentId || "").slice(-6).toUpperCase() || "—",
+      });
+      await load();
+    } finally {
+      setSaving(false);
     }
-    setReceipt({
-      shop,
-      month, year,
-      paidAmount: Number(form.paid_amount),
-      due: data.due,
-      paymentDate: form.payment_date,
-      method: form.method,
-      marketName: data.marketName,
-      collectorName: data.collectorName,
-      receiptNo: (data.paymentId || "").slice(-6).toUpperCase() || "—",
-    });
-    load();
+  }
+
+  async function handleDeletePayment(payment, shop) {
+    if (!confirm(`کیا آپ واقعی ${shop.tenant_name} کی ${MONTHS_UR[payment.month - 1]} ${payment.year} کی وصولی حذف کرنا چاہتے ہیں؟`)) return;
+    setDeleting(payment._id);
+    try {
+      const res = await fetch(`/api/payments/${payment._id}`, { method: "DELETE" });
+      if (res.ok) {
+        setNotice({ type: "success", text: "وصولی حذف کر دی گئی — اسٹیٹس دوبارہ 'بقایا' ہو گیا۔" });
+        await load();
+      } else {
+        setNotice({ type: "warn", text: "⚠️ حذف کرنے میں خرابی ہوئی۔" });
+      }
+    } finally {
+      setDeleting(null);
+    }
   }
 
   return (
@@ -96,6 +129,8 @@ export default function RentPage() {
 
       <input className="field-input mb-4" placeholder="🔎 دکان تلاش کریں (دکان نمبر / دکان دار کا نام / موبائل)"
         value={query} onChange={(e) => setQuery(e.target.value)} />
+
+      {errorMsg && <div className="card p-3 mb-4 text-sm text-red2">{errorMsg}</div>}
 
       {notice && (
         <div className={`card p-3 mb-4 text-sm ${notice.type === "warn" ? "text-red2" : notice.type === "info" ? "text-blue-600" : "text-green-700"}`}>
@@ -123,12 +158,23 @@ export default function RentPage() {
                 <div>{due <= 0 && p ? <span className="badge badge-paid">✔ ادا شدہ</span> : <span className="badge badge-due">بقایا</span>}</div>
               </div>
 
-              <button
-                className={`btn w-full mt-3 ${isOpen ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => openRow(s)}
-              >
-                {isOpen ? "🔽 وصول کریں (بند کریں)" : "💰 وصول کریں"}
-              </button>
+              <div className="flex gap-2 mt-3">
+                <button
+                  className={`btn flex-1 ${isOpen ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => openRow(s)}
+                >
+                  {isOpen ? "🔽 وصول کریں (بند کریں)" : "💰 وصول کریں"}
+                </button>
+                {p && (
+                  <button
+                    className="btn btn-danger"
+                    disabled={deleting === p._id}
+                    onClick={() => handleDeletePayment(p, s)}
+                  >
+                    {deleting === p._id ? "..." : "🗑️ حذف"}
+                  </button>
+                )}
+              </div>
 
               {isOpen && (
                 <div className="mt-3 space-y-3">

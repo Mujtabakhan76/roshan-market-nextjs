@@ -10,6 +10,9 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState([]);
   const [marketName, setMarketName] = useState("روشن مارکیٹ");
   const [loading, setLoading] = useState(true);
+  const [reportScope, setReportScope] = useState("all");
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     Promise.all([
@@ -52,6 +55,47 @@ export default function DashboardPage() {
     yearlyData.push({ label: String(y), value: yearSummary(y, shops, payIdx).collected });
   }
 
+  const shopMap = new Map(shops.map((s) => [String(s._id), s]));
+  const reportRows = validPayments
+    .filter((p) => {
+      if (reportScope === "month") return p.month === reportMonth && p.year === reportYear;
+      if (reportScope === "year") return p.year === reportYear;
+      return true;
+    })
+    .map((p) => ({ ...p, shop: shopMap.get(String(p.shop_id)) }))
+    .filter((p) => p.shop)
+    .sort((a, b) => (b.year - a.year) || (b.month - a.month) || a.shop.number.localeCompare(b.shop.number));
+
+  function downloadReportCSV() {
+    let csv = "دکان نمبر,دکان کا نام,دکان دار,مہینہ,سال,کل کرایہ,وصول شدہ,بقایا,حیثیت,تاریخ,طریقہ\n";
+    reportRows.forEach((p) => {
+      const due = Math.max(p.total_rent - p.paid_amount, 0);
+      csv += `${p.shop.number},${p.shop.name},${p.shop.tenant_name},${MONTHS_UR[p.month - 1]},${p.year},${p.total_rent},${p.paid_amount},${due},${due <= 0 ? "ادا شدہ" : "بقایا"},${p.payment_date || "—"},${p.method}\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "market-rent-report.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadReportPDF() {
+    const rows = reportRows.map((p) => {
+      const due = Math.max(p.total_rent - p.paid_amount, 0);
+      return `<tr><td>${p.shop.number}</td><td>${p.shop.tenant_name}</td><td>${MONTHS_UR[p.month - 1]} ${p.year}</td><td>${fmt(p.total_rent)}</td><td>${fmt(p.paid_amount)}</td><td>${fmt(due)}</td><td>${due <= 0 ? "ادا شدہ" : "بقایا"}</td></tr>`;
+    }).join("");
+    const scopeLabel = reportScope === "month" ? `${MONTHS_UR[reportMonth - 1]} ${reportYear}` : reportScope === "year" ? `سال ${reportYear}` : "تمام ریکارڈ";
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="UTF-8"><title>رپورٹ</title>
+      <style>body{font-family:sans-serif; direction:rtl; padding:24px;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ccc; padding:8px; text-align:right; font-size:12px;} th{background:#eef9f3;} @page{size:A4;}</style>
+      </head><body><h2>🏪 ${marketName} — مکمل کرایہ رپورٹ</h2><p>مدت: ${scopeLabel}</p>
+      <table><thead><tr><th>دکان نمبر</th><th>دکان دار</th><th>مہینہ</th><th>کل کرایہ</th><th>وصول شدہ</th><th>بقایا</th><th>حیثیت</th></tr></thead><tbody>${rows}</tbody></table>
+      </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }
+
   return (
     <div>
       <h1 className="text-2xl mb-1">🏠 {marketName} — ڈیش بورڈ</h1>
@@ -90,6 +134,35 @@ export default function DashboardPage() {
         <div className="card p-5">
           <h3 className="text-base mb-3">🏬 کرایہ پر بمقابلہ خالی</h3>
           <DoughnutCard data={[{ name: "کرایہ پر", value: rented }, { name: "خالی", value: empty }]} colors={[CHART_COLORS.BLUE, CHART_COLORS.GREY]} />
+        </div>
+      </div>
+
+      <div className="card p-5 mt-5">
+        <h3 className="text-base mb-3">📥 تمام دکانداروں کی رپورٹ ڈاؤن لوڈ کریں</h3>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[["all", "تمام ریکارڈ"], ["month", "مخصوص مہینہ"], ["year", "مخصوص سال"]].map(([val, label]) => (
+            <button key={val} onClick={() => setReportScope(val)} className={`btn ${reportScope === val ? "btn-primary" : "btn-ghost"}`}>{label}</button>
+          ))}
+        </div>
+        {reportScope === "month" && (
+          <div className="flex gap-2 mb-3">
+            <select className="field-input" value={reportMonth} onChange={(e) => setReportMonth(Number(e.target.value))}>
+              {MONTHS_UR.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+            <select className="field-input" value={reportYear} onChange={(e) => setReportYear(Number(e.target.value))}>
+              {Array.from({ length: 6 }, (_, i) => cy - 3 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        )}
+        {reportScope === "year" && (
+          <select className="field-input mb-3" value={reportYear} onChange={(e) => setReportYear(Number(e.target.value))}>
+            {Array.from({ length: 6 }, (_, i) => cy - 3 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        )}
+        <p className="text-inksoft text-xs mb-3">اس فلٹر میں کل <span className="num">{reportRows.length}</span> ریکارڈز شامل ہیں۔</p>
+        <div className="flex gap-2">
+          <button className="btn btn-primary" onClick={downloadReportPDF}>🖨️ PDF ڈاؤن لوڈ (Print)</button>
+          <button className="btn btn-ghost" onClick={downloadReportCSV}>⬇️ Excel (CSV) ڈاؤن لوڈ</button>
         </div>
       </div>
     </div>

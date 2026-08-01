@@ -10,6 +10,7 @@ export default function ReceiptModal({ data, onClose }) {
     const win = window.open("", "_blank", "width=420,height=650");
     win.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="UTF-8"><title>رسید</title>
       <style>
+        @page{size:A4; margin:20mm;}
         body{font-family:'Segoe UI',sans-serif; direction:rtl; padding:24px; color:#173226;}
         .receipt{max-width:360px; margin:0 auto; border:1px solid #ddd; border-radius:12px; padding:24px;}
         h2{text-align:center; color:#2f8a60; margin-bottom:2px;}
@@ -44,6 +45,7 @@ export default function ReceiptModal({ data, onClose }) {
               <div className="line"><span>بقایا رقم</span><span className="num">Rs {fmt(due)}</span></div>
               <div className="line"><span>ادائیگی کا طریقہ</span><span>{method}</span></div>
               <div className="line"><span>تاریخ</span><span className="num">{paymentDate}</span></div>
+              <div className="line"><span>وقت</span><span className="num">{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div>
               <div className="total"><span>وصول کنندہ:</span><span>{collectorName}</span></div>
               <div className="stamp">🖋️ کمپیوٹرائزڈ رسید — {marketName}</div>
             </div>
