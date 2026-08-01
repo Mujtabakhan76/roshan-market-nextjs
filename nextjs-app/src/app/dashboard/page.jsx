@@ -80,16 +80,59 @@ export default function DashboardPage() {
   }
 
   function downloadReportPDF() {
-    const rows = reportRows.map((p) => {
-      const due = Math.max(p.total_rent - p.paid_amount, 0);
-      return `<tr><td>${p.shop.number}</td><td>${p.shop.tenant_name}</td><td>${MONTHS_UR[p.month - 1]} ${p.year}</td><td>${fmt(p.total_rent)}</td><td>${fmt(p.paid_amount)}</td><td>${fmt(due)}</td><td>${due <= 0 ? "ادا شدہ" : "بقایا"}</td></tr>`;
+    // ہر دکاندار کا ریکارڈ الگ گروپ میں، اپنی الگ heading کے ساتھ — کسی دوسرے
+    // دکاندار کے ڈیٹا کے ساتھ مکس نہیں ہوگا۔
+    const byShop = new Map();
+    reportRows.forEach((p) => {
+      const key = p.shop._id;
+      if (!byShop.has(key)) byShop.set(key, { shop: p.shop, rows: [] });
+      byShop.get(key).rows.push(p);
+    });
+
+    const sections = [...byShop.values()].sort((a, b) => a.shop.number.localeCompare(b.shop.number)).map(({ shop, rows }) => {
+      const sortedRows = rows.sort((a, b) => (b.year - a.year) || (b.month - a.month));
+      const totalRent = sortedRows.reduce((a, p) => a + p.total_rent, 0);
+      const totalPaid = sortedRows.reduce((a, p) => a + p.paid_amount, 0);
+      const totalDue = Math.max(totalRent - totalPaid, 0);
+      const rowsHtml = sortedRows.map((p) => {
+        const due = Math.max(p.total_rent - p.paid_amount, 0);
+        return `<tr><td>${MONTHS_UR[p.month - 1]} ${p.year}</td><td>${fmt(p.total_rent)}</td><td>${fmt(p.paid_amount)}</td><td>${fmt(due)}</td><td>${due <= 0 ? "ادا شدہ" : "بقایا"}</td><td>${p.payment_date || "—"}</td></tr>`;
+      }).join("");
+      return `
+        <div class="tenant-section">
+          <div class="tenant-heading">
+            <h3>👤 ${shop.tenant_name}</h3>
+            <div class="tenant-meta">دکان نمبر: <b>${shop.number}</b> &nbsp;|&nbsp; دکان کا نام: <b>${shop.name}</b> ${shop.mobile ? `&nbsp;|&nbsp; فون: <b>${shop.mobile}</b>` : ""}</div>
+          </div>
+          <table><thead><tr><th>مہینہ</th><th>کل کرایہ</th><th>وصول شدہ</th><th>بقایا</th><th>حیثیت</th><th>تاریخ</th></tr></thead>
+          <tbody>${rowsHtml}</tbody></table>
+          <div class="tenant-totals">کل کرایہ: Rs ${fmt(totalRent)} &nbsp;|&nbsp; وصول شدہ: Rs ${fmt(totalPaid)} &nbsp;|&nbsp; بقایا: Rs ${fmt(totalDue)}</div>
+        </div>
+        <div class="divider"></div>`;
     }).join("");
+
     const scopeLabel = reportScope === "month" ? `${MONTHS_UR[reportMonth - 1]} ${reportYear}` : reportScope === "year" ? `سال ${reportYear}` : "تمام ریکارڈ";
     const win = window.open("", "_blank");
     win.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="UTF-8"><title>رپورٹ</title>
-      <style>body{font-family:sans-serif; direction:rtl; padding:24px;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ccc; padding:8px; text-align:right; font-size:12px;} th{background:#eef9f3;} @page{size:A4;}</style>
-      </head><body><h2>🏪 ${marketName} — مکمل کرایہ رپورٹ</h2><p>مدت: ${scopeLabel}</p>
-      <table><thead><tr><th>دکان نمبر</th><th>دکان دار</th><th>مہینہ</th><th>کل کرایہ</th><th>وصول شدہ</th><th>بقایا</th><th>حیثیت</th></tr></thead><tbody>${rows}</tbody></table>
+      <style>
+        @page{size:A4; margin:16mm;}
+        body{font-family:'Noto Naskh Arabic','Segoe UI',sans-serif; direction:rtl; padding:10px; color:#173226;}
+        h2{color:#2f8a60; margin-bottom:2px;}
+        .sub{color:#666; margin-bottom:20px;}
+        .tenant-section{margin-bottom:14px;}
+        .tenant-heading{background:#eef9f3; border-radius:8px; padding:10px 14px; margin-bottom:8px;}
+        .tenant-heading h3{margin:0 0 4px 0; color:#256e4d; font-size:16px;}
+        .tenant-meta{font-size:12.5px; color:#444;}
+        table{width:100%; border-collapse:collapse;}
+        th,td{border:1px solid #ccc; padding:6px 8px; text-align:right; font-size:12px;}
+        th{background:#f6faf8;}
+        .tenant-totals{margin-top:6px; font-size:13px; font-weight:bold; text-align:left;}
+        .divider{border-top:2px dashed #ccc; margin:18px 0; page-break-after:auto;}
+      </style>
+      </head><body>
+      <h2>🏪 ${marketName} — مکمل کرایہ رپورٹ (دکاندار کے حساب سے)</h2>
+      <div class="sub">مدت: ${scopeLabel} — بنایا گیا: ${new Date().toLocaleDateString("en-GB")}</div>
+      ${sections || "<p>اس مدت میں کوئی ریکارڈ موجود نہیں۔</p>"}
       </body></html>`);
     win.document.close();
     win.focus();

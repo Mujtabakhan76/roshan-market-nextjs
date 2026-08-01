@@ -52,16 +52,56 @@ export default function BackdatedRentPage() {
   }
 
   function printRows(rows, title) {
-    const html = rows.map((p) => {
+    // ہر دکاندار کا ریکارڈ الگ heading کے ساتھ گروپ کریں تاکہ مکس نہ ہو
+    const byShop = new Map();
+    rows.forEach((p) => {
       const shop = shops.find((s) => String(s._id) === String(p.shop_id));
-      const due = Math.max(p.total_rent - p.paid_amount, 0);
-      return `<tr><td>${shop?.number || "—"}</td><td>${shop?.tenant_name || "—"}</td><td>${MONTHS_UR[p.month - 1]} ${p.year}</td><td>${fmt(p.total_rent)}</td><td>${fmt(p.paid_amount)}</td><td>${fmt(due)}</td><td>${due <= 0 ? "ادا شدہ" : "بقایا"}</td></tr>`;
+      if (!shop) return;
+      const key = shop._id;
+      if (!byShop.has(key)) byShop.set(key, { shop, rows: [] });
+      byShop.get(key).rows.push(p);
+    });
+
+    const sections = [...byShop.values()].sort((a, b) => a.shop.number.localeCompare(b.shop.number)).map(({ shop, rows: shopRows }) => {
+      const sorted = shopRows.sort((a, b) => (b.year - a.year) || (b.month - a.month));
+      const totalRent = sorted.reduce((a, p) => a + p.total_rent, 0);
+      const totalPaid = sorted.reduce((a, p) => a + p.paid_amount, 0);
+      const totalDue = Math.max(totalRent - totalPaid, 0);
+      const rowsHtml = sorted.map((p) => {
+        const due = Math.max(p.total_rent - p.paid_amount, 0);
+        return `<tr><td>${MONTHS_UR[p.month - 1]} ${p.year}</td><td>${fmt(p.total_rent)}</td><td>${fmt(p.paid_amount)}</td><td>${fmt(due)}</td><td>${due <= 0 ? "ادا شدہ" : "بقایا"}</td><td>${p.payment_date || "—"}</td></tr>`;
+      }).join("");
+      return `
+        <div class="tenant-section">
+          <div class="tenant-heading">
+            <h3>👤 ${shop.tenant_name}</h3>
+            <div class="tenant-meta">دکان نمبر: <b>${shop.number}</b> ${shop.mobile ? `&nbsp;|&nbsp; فون: <b>${shop.mobile}</b>` : ""}</div>
+          </div>
+          <table><thead><tr><th>مہینہ</th><th>کل کرایہ</th><th>وصول شدہ</th><th>بقایا</th><th>حیثیت</th><th>تاریخ</th></tr></thead>
+          <tbody>${rowsHtml}</tbody></table>
+          <div class="tenant-totals">کل کرایہ: Rs ${fmt(totalRent)} &nbsp;|&nbsp; وصول شدہ: Rs ${fmt(totalPaid)} &nbsp;|&nbsp; بقایا: Rs ${fmt(totalDue)}</div>
+        </div>
+        <div class="divider"></div>`;
     }).join("");
+
     const win = window.open("", "_blank");
     win.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="UTF-8"><title>${title}</title>
-      <style>body{font-family:sans-serif; direction:rtl; padding:24px;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ccc; padding:8px; text-align:right; font-size:13px;} th{background:#eef9f3;}</style>
+      <style>
+        @page{size:A4; margin:16mm;}
+        body{font-family:'Noto Naskh Arabic','Segoe UI',sans-serif; direction:rtl; padding:10px; color:#173226;}
+        h2{color:#2f8a60; margin-bottom:20px;}
+        .tenant-section{margin-bottom:14px;}
+        .tenant-heading{background:#eef9f3; border-radius:8px; padding:10px 14px; margin-bottom:8px;}
+        .tenant-heading h3{margin:0 0 4px 0; color:#256e4d; font-size:16px;}
+        .tenant-meta{font-size:12.5px; color:#444;}
+        table{width:100%; border-collapse:collapse;}
+        th,td{border:1px solid #ccc; padding:6px 8px; text-align:right; font-size:12px;}
+        th{background:#f6faf8;}
+        .tenant-totals{margin-top:6px; font-size:13px; font-weight:bold; text-align:left;}
+        .divider{border-top:2px dashed #ccc; margin:18px 0;}
+      </style>
       </head><body><h2>🏪 ${settings.market_name} — ${title}</h2>
-      <table><thead><tr><th>دکان نمبر</th><th>دکان دار</th><th>مہینہ</th><th>کل کرایہ</th><th>وصول شدہ</th><th>بقایا</th><th>حیثیت</th></tr></thead><tbody>${html}</tbody></table>
+      ${sections || "<p>کوئی ریکارڈ موجود نہیں۔</p>"}
       </body></html>`);
     win.document.close();
     win.focus();
